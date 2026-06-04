@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import axios from "../api/axios"
 
 type CartItem = {
   name: string
@@ -6,30 +7,95 @@ type CartItem = {
   qty: number
 }
 
-const products = [
-  { name: "Amoxicillin 250mg",     price: 85.00,  stock: 4  },
-  { name: "Rabies Vaccine",        price: 320.00, stock: 22 },
-  { name: "Flea Treatment Spray",  price: 195.00, stock: 8  },
-  { name: "Dog Dewormer",          price: 110.00, stock: 35 },
-  { name: "Cat Dry Food 1kg",      price: 280.00, stock: 18 },
-  { name: "Elizabethan Collar (M)", price: 145.00, stock: 12 },
-  { name: "Ivermectin 10ml",       price: 230.00, stock: 27 },
-  { name: "Puppy Milk Formula",    price: 390.00, stock: 6  },
-]
-
-const productCategories: Record<string, string[]> = {
-  All: ["Amoxicillin 250mg", "Rabies Vaccine", "Flea Treatment Spray", "Dog Dewormer", "Cat Dry Food 1kg", "Elizabethan Collar (M)", "Ivermectin 10ml", "Puppy Milk Formula"],
-  Medicine: ["Amoxicillin 250mg", "Rabies Vaccine", "Dog Dewormer", "Ivermectin 10ml"],
-  Supplies: ["Flea Treatment Spray", "Elizabethan Collar (M)"],
-  Food: ["Cat Dry Food 1kg", "Puppy Milk Formula"],
+type Product = {
+  id: number
+  name: string
+  price: number
+  stock: number
+  category: string
+  maxStock: number
 }
 
 export default function Cashier() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [payment, setPayment] = useState<"Cash" | "Card">("Cash")
   const [selectedCategory, setSelectedCategory] = useState<"All" | "Medicine" | "Supplies" | "Food">("All")
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState("")
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsLoading, setProductsLoading] = useState(true)
 
-  const addToCart = (product: { name: string; price: number }) => {
+  // Fetch products on component mount
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    try {
+      setProductsLoading(true)
+      const response = await axios.get("/products")
+      setProducts(response.data)
+    } catch (error) {
+      console.error("Error fetching products:", error)
+    } finally {
+      setProductsLoading(false)
+    }
+  }
+
+  const getFilteredProducts = () => {
+    if (selectedCategory === "All") {
+      return products
+    }
+    return products.filter((p) => p.category === selectedCategory)
+  }
+
+  const completeSale = async () => {
+    if (cart.length === 0) {
+      setMessage("Cart is empty")
+      return
+    }
+
+    try {
+      setLoading(true)
+      const total = cart.reduce((sum, i) => sum + i.price * i.qty, 0)
+      
+      // First, save the transaction
+      const response = await axios.post("/transactions", {
+        items: cart,
+        total,
+        payment,
+      })
+      
+      console.log("Sale response:", response.data)
+      
+      // Then, update stock
+      const stockUpdateItems = cart.map((item) => ({
+        name: item.name,
+        qty: item.qty,
+      }))
+      
+      await axios.post("/products/update-stock", {
+        items: stockUpdateItems,
+      })
+      
+      console.log("Stock updated successfully")
+      
+      // Refresh products to show updated stock
+      await fetchProducts()
+      
+      setMessage("Sale completed! ✓")
+      setCart([])
+      setTimeout(() => setMessage(""), 3000)
+    } catch (error: any) {
+      console.error("Error completing sale:", error)
+      console.error("Error details:", error.response?.data, error.message)
+      setMessage("Error saving sale")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const addToCart = (product: Product) => {
     setCart((prev) => {
       const existing = prev.find((i) => i.name === product.name)
       if (existing) {
@@ -85,23 +151,36 @@ export default function Cashier() {
 
           {/* Product grid */}
           <div className="grid grid-cols-2 gap-3">
-            {products
-              .filter((product) => productCategories[selectedCategory].includes(product.name))
-              .map((product) => {
-              const inCart = cart.find((i) => i.name === product.name)
-              return (
-                <button
-                  key={product.name}
-                  onClick={() => addToCart(product)}
-                  className={`text-left bg-white rounded-xl p-4 border-2 transition-all shadow-sm hover:border-emerald-600
-                    ${inCart ? "border-emerald-600 bg-emerald-50" : "border-transparent"}`}
-                >
-                  <p className="text-sm font-semibold text-gray-800 mb-1">{product.name}</p>
-                  <p className="text-sm font-semibold text-emerald-700 mb-1">₱{product.price.toFixed(2)}</p>
-                  <p className="text-xs text-gray-400">{product.stock} in stock</p>
-                </button>
-              )
-            })}
+            {productsLoading ? (
+              <p className="text-xs text-gray-400 col-span-2 text-center py-4">Loading products...</p>
+            ) : getFilteredProducts().length === 0 ? (
+              <p className="text-xs text-gray-400 col-span-2 text-center py-4">No products in this category</p>
+            ) : (
+              getFilteredProducts().map((product) => {
+                const inCart = cart.find((i) => i.name === product.name)
+                const isOutOfStock = product.stock === 0
+                return (
+                  <button
+                    key={product.name}
+                    onClick={() => !isOutOfStock && addToCart(product)}
+                    disabled={isOutOfStock}
+                    className={`text-left bg-white rounded-xl p-4 border-2 transition-all shadow-sm
+                      ${isOutOfStock 
+                        ? "opacity-50 cursor-not-allowed border-gray-200" 
+                        : inCart 
+                          ? "border-emerald-600 bg-emerald-50 hover:border-emerald-600" 
+                          : "border-transparent hover:border-emerald-600"
+                      }`}
+                  >
+                    <p className="text-sm font-semibold text-gray-800 mb-1">{product.name}</p>
+                    <p className="text-sm font-semibold text-emerald-700 mb-1">₱{product.price.toFixed(2)}</p>
+                    <p className={`text-xs ${isOutOfStock ? "text-red-500 font-medium" : "text-gray-400"}`}>
+                      {isOutOfStock ? "Out of stock" : `${product.stock} in stock`}
+                    </p>
+                  </button>
+                )
+              })
+            )}
           </div>
         </div>
 
@@ -175,9 +254,18 @@ export default function Cashier() {
               ))}
             </div>
 
-            <button className="w-full bg-[#1b3a2d] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-[#2d6a4f] transition-colors">
-              Complete sale
+            <button 
+              onClick={completeSale}
+              disabled={loading || cart.length === 0}
+              className="w-full bg-[#1b3a2d] text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-[#2d6a4f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Processing..." : "Complete sale"}
             </button>
+            {message && (
+              <p className={`text-xs text-center mt-2 font-medium ${message.includes("Error") ? "text-red-500" : "text-emerald-600"}`}>
+                {message}
+              </p>
+            )}
             <p className="text-[10px] text-gray-400 text-center mt-2">
               Sales automatically deduct from item tracker
             </p>

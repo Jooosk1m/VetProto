@@ -21,3 +21,11 @@ model Pet {
   species   String
   createdAt DateTime @default(now())
 }
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  items     String   // JSON array stored as string
+  total     Float
+  payment   String   // "Cash" or "Card"
+  createdAt DateTime @default(now())
+}
