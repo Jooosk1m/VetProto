@@ -1,35 +1,87 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import axios from "../api/axios"
 
-const monthlyBars = [
-  { month: "Jan", value: 8200,  height: 55 },
-  { month: "Feb", value: 9100,  height: 62 },
-  { month: "Mar", value: 7800,  height: 52 },
-  { month: "Apr", value: 12400, height: 84 },
-  { month: "May", value: 14820, height: 100, current: true },
-  { month: "Jun", value: 0, height: 0, future: true },
-  { month: "Jul", value: 0, height: 0, future: true },
-  { month: "Aug", value: 0, height: 0, future: true },
-  { month: "Sep", value: 0, height: 0, future: true },
-  { month: "Oct", value: 0, height: 0, future: true },
-  { month: "Nov", value: 0, height: 0, future: true },
-  { month: "Dec", value: 0, height: 0, future: true },
-]
-
-const breakdown = [
-  { name: "Medicine", amount: 9200, pct: 62, color: "bg-emerald-600" },
-  { name: "Supplies", amount: 3100, pct: 21, color: "bg-amber-400" },
-  { name: "Food",     amount: 2520, pct: 17, color: "bg-blue-500" },
-]
-
-const transactions = [
-  { date: "May 28", items: "Amoxicillin 250mg, Collar (M)", payment: "Cash", amount: 230.00 },
-  { date: "May 27", items: "Rabies Vaccine × 2",            payment: "Card", amount: 640.00 },
-  { date: "May 27", items: "Dog Dewormer, Cat Dry Food 1kg", payment: "Cash", amount: 390.00 },
-  { date: "May 26", items: "Flea Treatment Spray",          payment: "Cash", amount: 195.00 },
-]
+type Transaction = {
+  id: number
+  items: Array<{ name: string; price: number; qty: number }>
+  total: number
+  payment: string
+  createdAt: string
+}
 
 export default function Accounting() {
   const [period, setPeriod] = useState("Monthly")
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchTransactions()
+  }, [])
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true)
+      const response = await axios.get("/transactions")
+      setTransactions(response.data)
+    } catch (error) {
+      console.error("Error fetching transactions:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Calculate stats from transactions
+  const calculateStats = () => {
+    if (transactions.length === 0) {
+      return {
+        totalRevenue: 0,
+        transactionCount: 0,
+        avgPerTransaction: 0,
+        breakdown: [],
+        monthlyBars: [],
+      }
+    }
+
+    const totalRevenue = transactions.reduce((sum, t) => sum + t.total, 0)
+    const avgPerTransaction = totalRevenue / transactions.length
+
+    // Calculate breakdown by category
+    const categoryTotals: Record<string, number> = {}
+    const categoryNames = {
+      medicine: ["Amoxicillin", "Rabies Vaccine", "Dog Dewormer", "Ivermectin"],
+      supplies: ["Flea Treatment", "Collar"],
+      food: ["Food", "Milk Formula"],
+    }
+
+    transactions.forEach((txn) => {
+      txn.items.forEach((item) => {
+        let category = "Other"
+        if (categoryNames.medicine.some((m) => item.name.includes(m))) category = "Medicine"
+        else if (categoryNames.supplies.some((s) => item.name.includes(s))) category = "Supplies"
+        else if (categoryNames.food.some((f) => item.name.includes(f))) category = "Food"
+
+        categoryTotals[category] = (categoryTotals[category] || 0) + item.price * item.qty
+      })
+    })
+
+    const breakdown = Object.entries(categoryTotals).map(([name, amount]) => ({
+      name,
+      amount,
+      pct: Math.round((amount / totalRevenue) * 100),
+      color: name === "Medicine" ? "bg-emerald-600" : name === "Supplies" ? "bg-amber-400" : "bg-blue-500",
+    }))
+
+    return {
+      totalRevenue,
+      transactionCount: transactions.length,
+      avgPerTransaction,
+      breakdown,
+    }
+  }
+
+  const stats = calculateStats()
+  const topCategory = stats.breakdown.length > 0 ? stats.breakdown[0] : null
 
   return (
     <div>
@@ -57,23 +109,23 @@ export default function Accounting() {
       <div className="grid grid-cols-4 gap-4 mb-5">
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Revenue This Month</p>
-          <p className="text-2xl font-bold text-gray-900 mb-1">₱14,820</p>
-          <p className="text-xs text-emerald-600 font-medium">+12% vs last month</p>
+          <p className="text-2xl font-bold text-gray-900 mb-1">₱{stats.totalRevenue.toLocaleString("en", { maximumFractionDigits: 0 })}</p>
+          <p className="text-xs text-emerald-600 font-medium">{transactions.length} sales</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Transactions</p>
-          <p className="text-2xl font-bold text-gray-900 mb-1">47</p>
-          <p className="text-xs text-gray-400">This month</p>
+          <p className="text-2xl font-bold text-gray-900 mb-1">{stats.transactionCount}</p>
+          <p className="text-xs text-gray-400">Total</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Avg. Per Transaction</p>
-          <p className="text-2xl font-bold text-gray-900 mb-1">₱315</p>
-          <p className="text-xs text-gray-400">This month</p>
+          <p className="text-2xl font-bold text-gray-900 mb-1">₱{Math.round(stats.avgPerTransaction)}</p>
+          <p className="text-xs text-gray-400">Average</p>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Top Category</p>
-          <p className="text-xl font-bold text-gray-900 mb-1">Medicine</p>
-          <p className="text-xs text-gray-400">62% of sales</p>
+          <p className="text-xl font-bold text-gray-900 mb-1">{topCategory?.name || "—"}</p>
+          <p className="text-xs text-gray-400">{topCategory?.pct || 0}% of sales</p>
         </div>
       </div>
 
@@ -83,25 +135,77 @@ export default function Accounting() {
         {/* Bar chart */}
         <div className="bg-white rounded-xl p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
-            <span className="text-sm font-semibold text-gray-800">Monthly revenue</span>
-            <span className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">2025</span>
+            <span className="text-sm font-semibold text-gray-800">Revenue breakdown</span>
+            <span className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">{transactions.length} sales</span>
           </div>
-          <div className="flex items-end gap-1.5 h-28">
-            {monthlyBars.map((bar) => (
-              <div key={bar.month} className="flex flex-col items-center gap-1 flex-1">
-                {bar.current && (
-                  <span className="text-[9px] font-semibold text-emerald-700">₱14.8k</span>
-                )}
-                {!bar.current && <span className="text-[9px] text-transparent">x</span>}
-                <div
-                  className={`w-full rounded-t-sm transition-all
-                    ${bar.future ? "bg-gray-100" : bar.current ? "bg-emerald-700" : "bg-emerald-300"}`}
-                  style={{ height: `${bar.future ? 6 : (bar.height / 100) * 80}px` }}
-                />
-                <span className="text-[9px] text-gray-400">{bar.month}</span>
+          {loading ? (
+            <p className="text-gray-400 text-center py-8">Loading...</p>
+          ) : transactions.length === 0 ? (
+            <p className="text-gray-400 text-center py-8">No transactions yet</p>
+          ) : (
+            <div>
+              <div className="mb-6 pb-4 border-b border-gray-100">
+                <p className="text-xs text-gray-500 mb-1">Total Revenue</p>
+                <p className="text-3xl font-bold text-emerald-700">₱{stats.totalRevenue.toLocaleString("en", { maximumFractionDigits: 0 })}</p>
               </div>
-            ))}
-          </div>
+              
+              <div className="flex items-end gap-2 h-24">
+                  {stats.breakdown.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center w-full">No breakdown data</p>
+                  ) : (
+                    <>
+                      {/* Bars — fixed height, grow from bottom */}
+                      <div className="flex items-end gap-2 h-24">
+                        {stats.breakdown.length === 0 ? (
+                          <p className="text-xs text-gray-400 text-center w-full">
+                            No breakdown data
+                          </p>
+                        ) : (
+                          (() => {
+                            const maxAmount = Math.max(
+                              ...stats.breakdown.map((c) => c.amount)
+                            )
+
+                            return stats.breakdown.map((category) => {
+                              const heightPercent =
+                                maxAmount === 0
+                                  ? 0
+                                  : Math.max(5, (category.amount / maxAmount) * 100)
+
+                              return (
+                                <div
+                                  key={category.name}
+                                  className="flex-1 flex flex-col items-center justify-end"
+                                >
+                                  {/* THIS IS THE IMPORTANT FIX */}
+                                  <div className="w-full h-24 flex items-end">
+                                    <div
+                                      className={`w-full rounded-t-md ${category.color}`}
+                                      style={{
+                                        height: `${heightPercent}%`,
+                                        minHeight: "4px",
+                                      }}
+                                    />
+                                  </div>
+
+                                  <span className="text-[11px] font-medium text-gray-600 mt-2">
+                                    {category.name}
+                                  </span>
+
+                                  <span className="text-[10px] text-gray-400">
+                                    ₱{(category.amount / 1000).toFixed(1)}k
+                                  </span>
+                                </div>
+                              )
+                            })
+                          })()
+                        )}
+                      </div>
+                    </>
+                  )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sales breakdown */}
@@ -111,24 +215,35 @@ export default function Accounting() {
             <span className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">This month</span>
           </div>
           <div className="flex flex-col">
-            {breakdown.map((item) => (
-              <div key={item.name} className="py-2.5 border-b border-gray-50 last:border-none">
-                <div className="flex justify-between items-center mb-1.5">
-                  <span className="text-sm text-gray-700">{item.name}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500">₱{item.amount.toLocaleString()}</span>
-                    <span className="text-xs font-bold text-gray-800">{item.pct}%</span>
-                  </div>
+            {stats.breakdown.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-4">No sales data</p>
+            ) : (
+              <>
+                {stats.breakdown.map((item) => (
+                  <button
+                    key={item.name}
+                    onClick={() => setSelectedCategory(selectedCategory === item.name ? null : item.name)}
+                    className={`py-2.5 border-b border-gray-50 last:border-none text-left transition-colors hover:bg-gray-50
+                      ${selectedCategory === item.name ? "bg-blue-50" : ""}`}
+                  >
+                    <div className="flex justify-between items-center mb-1.5">
+                      <span className="text-sm text-gray-700">{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">₱{item.amount.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
+                        <span className="text-xs font-bold text-gray-800">{item.pct}%</span>
+                      </div>
+                    </div>
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.pct}%` }} />
+                    </div>
+                  </button>
+                ))}
+                <div className="flex justify-between items-center pt-3">
+                  <span className="text-sm font-bold text-gray-800">Total</span>
+                  <span className="text-sm font-bold text-gray-900">₱{stats.totalRevenue.toLocaleString("en", { maximumFractionDigits: 0 })}</span>
                 </div>
-                <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.pct}%` }} />
-                </div>
-              </div>
-            ))}
-            <div className="flex justify-between items-center pt-3">
-              <span className="text-sm font-bold text-gray-800">Total</span>
-              <span className="text-sm font-bold text-gray-900">₱14,820</span>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -149,24 +264,55 @@ export default function Accounting() {
             </tr>
           </thead>
           <tbody>
-            {transactions.map((txn, i) => (
-              <tr key={i} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
-                <td className="px-5 py-3 text-sm text-gray-700">{txn.date}</td>
-                <td className="px-5 py-3 text-sm text-gray-400">{txn.items}</td>
-                <td className="px-5 py-3">
-                  <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full
-                    ${txn.payment === "Cash"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-orange-50 text-orange-600"
-                    }`}>
-                    {txn.payment}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-sm font-semibold text-gray-800">
-                  ₱{txn.amount.toFixed(2)}
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="px-5 py-4 text-center text-gray-400 text-sm">
+                  Loading...
                 </td>
               </tr>
-            ))}
+            ) : transactions.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-5 py-4 text-center text-gray-400 text-sm">
+                  No transactions yet. Complete a sale in the Cashier to see it here.
+                </td>
+              </tr>
+            ) : (
+              transactions
+                .filter((txn) => {
+                  if (!selectedCategory) return true
+                  return txn.items.some((item) => item.name.toLowerCase().includes(selectedCategory.toLowerCase()))
+                })
+                .map((txn) => {
+                  const itemsDisplay = txn.items
+                    .map((item) => `${item.name} × ${item.qty}`)
+                    .join(", ")
+                  const date = new Date(txn.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })
+
+                  return (
+                    <tr key={txn.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3 text-sm text-gray-700">{date}</td>
+                      <td className="px-5 py-3 text-sm text-gray-400">{itemsDisplay}</td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`text-xs font-medium px-2.5 py-0.5 rounded-full
+                            ${txn.payment === "Cash"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-orange-50 text-orange-600"
+                            }`}
+                        >
+                          {txn.payment}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-sm font-semibold text-gray-800">
+                        ₱{txn.total.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  )
+                })
+            )}
           </tbody>
         </table>
       </div>

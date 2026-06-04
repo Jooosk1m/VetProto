@@ -1,18 +1,14 @@
-import express from "express"
-import cors from "cors"
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import productRoutes from "./route/products.js";
+import transactionRoutes from "./route/transactions.js";
 
-const app = express()
-app.use(cors())
-app.use(express.json())
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-app.post("/api/hello", (req, res) => {
+app.use("/api/products", productRoutes);
+app.use("/api/transactions", transactionRoutes);
 
-  const { a, b } = req.body;
-  const result = a + b;
-
-  res.json({ message: "Backend working!", result })
-})
-
-app.listen(3001, () => {
-  console.log("Server running on http://localhost:3001")
-})
+app.listen(3001, () => console.log("Server running on http://localhost:3001"));

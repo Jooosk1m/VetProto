@@ -1,6 +1,6 @@
 
 import { NavLink } from "react-router-dom"
-import { LayoutGrid, Receipt, TrendingUp } from "lucide-react"
+import { LayoutGrid, Receipt, TrendingUp, Proportions } from "lucide-react"
 
 
 export default function Navbar() {
@@ -22,6 +22,10 @@ export default function Navbar() {
 
           <NavLink to="/"    className={navItem}>
             <TrendingUp size={15} /> Accounting
+          </NavLink>
+
+          <NavLink to="/transaction"    className={navItem}>
+            <Proportions size={15} /> Transaction
           </NavLink>
     </nav>
   )
