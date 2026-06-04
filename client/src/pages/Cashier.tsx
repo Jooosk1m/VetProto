@@ -17,9 +17,17 @@ const products = [
   { name: "Puppy Milk Formula",    price: 390.00, stock: 6  },
 ]
 
+const productCategories: Record<string, string[]> = {
+  All: ["Amoxicillin 250mg", "Rabies Vaccine", "Flea Treatment Spray", "Dog Dewormer", "Cat Dry Food 1kg", "Elizabethan Collar (M)", "Ivermectin 10ml", "Puppy Milk Formula"],
+  Medicine: ["Amoxicillin 250mg", "Rabies Vaccine", "Dog Dewormer", "Ivermectin 10ml"],
+  Supplies: ["Flea Treatment Spray", "Elizabethan Collar (M)"],
+  Food: ["Cat Dry Food 1kg", "Puppy Milk Formula"],
+}
+
 export default function Cashier() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [payment, setPayment] = useState<"Cash" | "Card">("Cash")
+  const [selectedCategory, setSelectedCategory] = useState<"All" | "Medicine" | "Supplies" | "Food">("All")
 
   const addToCart = (product: { name: string; price: number }) => {
     setCart((prev) => {
@@ -60,11 +68,12 @@ export default function Cashier() {
         <div className="overflow-y-auto">
           {/* Filter tabs */}
           <div className="flex gap-2 mb-4">
-            {["All", "Medicine", "Supplies", "Food"].map((tab, i) => (
+            {["All", "Medicine", "Supplies", "Food"].map((tab) => (
               <button
                 key={tab}
+                onClick={() => setSelectedCategory(tab as "All" | "Medicine" | "Supplies" | "Food")}
                 className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-all
-                  ${i === 0
+                  ${selectedCategory === tab
                     ? "bg-[#1b3a2d] text-white border-[#1b3a2d]"
                     : "bg-white text-gray-500 border-gray-200 hover:border-gray-400"
                   }`}
@@ -76,7 +85,9 @@ export default function Cashier() {
 
           {/* Product grid */}
           <div className="grid grid-cols-2 gap-3">
-            {products.map((product) => {
+            {products
+              .filter((product) => productCategories[selectedCategory].includes(product.name))
+              .map((product) => {
               const inCart = cart.find((i) => i.name === product.name)
               return (
                 <button

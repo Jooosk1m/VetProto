@@ -30,6 +30,7 @@ const transactions = [
 
 export default function Accounting() {
   const [period, setPeriod] = useState("Monthly")
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   return (
     <div>
@@ -112,7 +113,12 @@ export default function Accounting() {
           </div>
           <div className="flex flex-col">
             {breakdown.map((item) => (
-              <div key={item.name} className="py-2.5 border-b border-gray-50 last:border-none">
+              <button
+                key={item.name}
+                onClick={() => setSelectedCategory(selectedCategory === item.name ? null : item.name)}
+                className={`py-2.5 border-b border-gray-50 last:border-none text-left transition-colors hover:bg-gray-50
+                  ${selectedCategory === item.name ? "bg-blue-50" : ""}`}
+              >
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-sm text-gray-700">{item.name}</span>
                   <div className="flex items-center gap-2">
@@ -123,7 +129,7 @@ export default function Accounting() {
                 <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.pct}%` }} />
                 </div>
-              </div>
+              </button>
             ))}
             <div className="flex justify-between items-center pt-3">
               <span className="text-sm font-bold text-gray-800">Total</span>
@@ -149,7 +155,9 @@ export default function Accounting() {
             </tr>
           </thead>
           <tbody>
-            {transactions.map((txn, i) => (
+            {transactions
+              .filter((txn) => !selectedCategory || txn.items.toLowerCase().includes(selectedCategory.toLowerCase()))
+              .map((txn, i) => (
               <tr key={i} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
                 <td className="px-5 py-3 text-sm text-gray-700">{txn.date}</td>
                 <td className="px-5 py-3 text-sm text-gray-400">{txn.items}</td>
