@@ -1,24 +1,29 @@
-// src/App.tsx
-import { BrowserRouter, Routes, Route } from "react-router-dom"
-import MainLayout from "./layout/MainLayout"
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-// Pages — you need at least one
-import Accounting from "./pages/Accounting"
-import Cashier from "./pages/Cashier"
-import ItemTracker from "./pages/ItemTracker"
-import TransactionReport from "./pages/Transaction"
+//Layout
+import MainLayout from "./componets/MainLayout";
+
+//Cashier-Pages
+import Accounting from "./pages/Cashier/Accounting";
+import Cashier from "./pages/Cashier/Cashier";
+import ItemTracker from "./pages/Cashier/ItemTracker";
+import TransactionReport from "./pages/Cashier/Transaction";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route element={<MainLayout />}>
-          <Route path="/" element={<Accounting />} /> 
-          <Route path="/cashier" element={<Cashier />}/>
-          <Route path="/itemtracker" element={<ItemTracker />} />
+      <MainLayout>
+        <Routes>
+
+          {/* CASHIER */}
+          <Route path="/Accounting" element={<Accounting />} />
+          <Route path="/Cashier" element={<Cashier />} />
+          <Route path="/ItemTracker" element={<ItemTracker />} />
+
+          {/* FINANCE */}
           <Route path="/transaction" element={<TransactionReport />} />
-        </Route>
-      </Routes>
+        </Routes>
+      </MainLayout>
     </BrowserRouter>
-  )
+  );
 }

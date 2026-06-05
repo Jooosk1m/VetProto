@@ -125,13 +125,20 @@ export default function ItemTracker() {
 
   return (
     <div>
-      {/* Top bar */}
-      <div className="flex justify-end items-center gap-3 mb-5">
-        <button onClick={fetchProducts} className="text-xs text-gray-400 hover:text-gray-600">↻ Refresh</button>
-        <button onClick={() => setShowAddModal(true)} className="bg-[#1b3a2d] text-white text-xs font-medium px-4 py-2 rounded-lg hover:bg-[#2d6a4f]">
-          + Add item
-        </button>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-5">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Item Tracker</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Full history of all completed sales</p>
+        </div>
+        <div className="flex justify-end items-center gap-3 mb-5">
+          <button onClick={fetchProducts} className="text-xs text-gray-400 hover:text-gray-600">↻ Refresh</button>
+          <button onClick={() => setShowAddModal(true)} className="bg-[#1b3a2d] text-white text-xs font-medium px-4 py-2 rounded-lg hover:bg-[#2d6a4f]">
+            + Add item
+          </button>
+        </div>
       </div>
+
 
       {/* Add Modal */}
       {showAddModal && (

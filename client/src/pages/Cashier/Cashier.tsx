@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import axios from "../api/axios"
+import axios from "../../api/axios"
 
 type CartItem = {
   name: string
@@ -131,8 +131,9 @@ const addToCart = (product: Product) => {
   return (
     <div>
       {/* Top bar */}
-      <div className="flex justify-end mb-5">
-        <span className="text-xs text-gray-400">{today}</span>
+      <div className="flex justify-between mb-5">
+        <h1 className="text-2xl font-bold text-gray-900">Cashier</h1>
+        <span className="text-sm text-gray-400">{today}</span>          
       </div>
 
       <div className="grid grid-cols-[1fr_300px] gap-5 h-[calc(100vh-120px)]">
