@@ -92,7 +92,7 @@ export default function MainLayout({ children }: { children?: React.ReactNode })
             <Receipt size={18} />
             Billing & Invoices
           </NavLink>
-          <NavLink to="/Transaction" className={navStyle}>
+          <NavLink to="/transaction" className={navStyle}>
             <ArrowLeftRight size={18} />
             Transaction
           </NavLink>
@@ -101,6 +101,10 @@ export default function MainLayout({ children }: { children?: React.ReactNode })
         {/* ADMIN */}
         <div className="px-3 mb-2">
           <p className="text-xs font-semibold text-gray-400 tracking-widest px-2 mb-1">ADMIN</p>
+          <NavLink to="/admin" className={navStyle}>
+            <LayoutDashboard size={18} />
+            Admin Overview
+          </NavLink>
           <NavLink to="/staff" className={navStyle}>
             <Users size={18} />
             Staff Management
