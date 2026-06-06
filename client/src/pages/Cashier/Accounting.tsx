@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import axios from "../api/axios"
+import axios from "../../api/axios"
 
 type Transaction = {
   id: number
@@ -150,27 +150,59 @@ export default function Accounting() {
               </div>
               
               <div className="flex items-end gap-2 h-24">
-                {stats.breakdown.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center w-full">No breakdown data</p>
-                ) : (
-                  stats.breakdown.map((category) => {
-                    const maxAmount = Math.max(...stats.breakdown.map(c => c.amount))
-                    const heightPercent = (category.amount / maxAmount) * 100
-                    
-                    return (
-                      <div key={category.name} className="flex-1 flex flex-col items-center gap-2">
-                        <div className="w-full flex flex-col items-center">
-                          <div
-                            className={`w-full rounded-t-md transition-all ${category.color}`}
-                            style={{ height: `${heightPercent}px` }}
-                          />
-                        </div>
-                        <span className="text-[11px] font-medium text-gray-600">{category.name}</span>
-                        <span className="text-[10px] text-gray-400">₱{(category.amount / 1000).toFixed(1)}k</span>
+                  {stats.breakdown.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center w-full">No breakdown data</p>
+                  ) : (
+                    <>
+                      {/* Bars — fixed height, grow from bottom */}
+                      <div className="flex items-end gap-2 h-24">
+                        {stats.breakdown.length === 0 ? (
+                          <p className="text-xs text-gray-400 text-center w-full">
+                            No breakdown data
+                          </p>
+                        ) : (
+                          (() => {
+                            const maxAmount = Math.max(
+                              ...stats.breakdown.map((c) => c.amount)
+                            )
+
+                            return stats.breakdown.map((category) => {
+                              const heightPercent =
+                                maxAmount === 0
+                                  ? 0
+                                  : Math.max(5, (category.amount / maxAmount) * 100)
+
+                              return (
+                                <div
+                                  key={category.name}
+                                  className="flex-1 flex flex-col items-center justify-end"
+                                >
+                                  {/* THIS IS THE IMPORTANT FIX */}
+                                  <div className="w-full h-24 flex items-end">
+                                    <div
+                                      className={`w-full rounded-t-md ${category.color}`}
+                                      style={{
+                                        height: `${heightPercent}%`,
+                                        minHeight: "4px",
+                                      }}
+                                    />
+                                  </div>
+
+                                  <span className="text-[11px] font-medium text-gray-600 mt-2">
+                                    {category.name}
+                                  </span>
+
+                                  <span className="text-[10px] text-gray-400">
+                                    ₱{(category.amount / 1000).toFixed(1)}k
+                                  </span>
+                                </div>
+                              )
+                            })
+                          })()
+                        )}
                       </div>
-                    )
-                  })
-                )}
+                    </>
+                  )}
               </div>
             </div>
           )}
